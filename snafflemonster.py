@@ -12,7 +12,7 @@ def load_data(filename:str):
         data = json.load(snaffout)
     return data
 
-def post_data_to_elastic(data, index:str, apikey:str):
+def post_data_to_elastic(data, index:str, apikey:str, host:str):
     triage_levels = ["Green", "Yellow", "Red", "Black"]
     snaffle = {}
     snaffle["entries"] = []
@@ -24,7 +24,7 @@ def post_data_to_elastic(data, index:str, apikey:str):
                 if(list(entry["eventProperties"].keys())[0] == triage_level):
                     if(entry["eventProperties"][triage_level]["Type"] == "FileResult"):
                         # send the data
-                        r = requests.put(f"https://10.48.100.119:9200/{index}/_doc/{ii}", json=entry["eventProperties"][triage_level], headers={"Authorization": f"ApiKey {apikey}"}, verify=False)
+                        r = requests.put(f"https://{host}/{index}/_doc/{ii}", json=entry["eventProperties"][triage_level], headers={"Authorization": f"ApiKey {apikey}"}, verify=False)
                         if(r.status_code != 201):
                             print(r.status_code, r.reason)
                         # increment the counter 
@@ -33,6 +33,7 @@ def post_data_to_elastic(data, index:str, apikey:str):
 def main():
     parser = argparse.ArgumentParser(description="Send Snaffler Output to ElasticSearch for analysis.", epilog="Happy Snaffling")
     parser.add_argument("-f", "--file", type=str, help="The path to the JSON file to process.", required=True)
+    parser.add_argument("-n", "--hostname", type=str, help="Hostname or IP pointing to the ElasticSearch instance.", required=True)
     parser.add_argument("-i", "--index", type=str, help="The name of the index to store results in.")
     parser.add_argument("-k", "--apikey", type=str, help="The API key used to authentiate to ElasticSearch.")
     parser.add_argument("-r", "--replace", type=str, help="Optional argument to delete existing items in the index selected before adding new items.")
@@ -43,14 +44,14 @@ def main():
     data = load_data(args.file)
 
     if args.index is not None and args.apikey is not None:
-        post_data_to_elastic(data, args.index, args.apikey)
+        post_data_to_elastic(data, args.index, args.apikey, args.url)
     else:
         if args.index is None:
             # TODO add functionality here using the ES library to check for existing indicies
             index = input("Please enter a name for the index to use: ")
         if args.apikey is None:
             apikey = input("Please enter an API Key: ")
-        post_data_to_elastic(data, index, apikey)
+        post_data_to_elastic(data, index, apikey, args.url)
 
 if __name__ == "__main__":
     main()
