@@ -1,34 +1,36 @@
 #!/usr/bin/env python3
 import json
 import argparse
-from xmlrpc.client import Boolean
-import requests
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-# Disable insecure requests warning (it doesn't matter)
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning) 
+from elasticsearch import Elasticsearch
 
 def load_data(filename:str):
     with open(filename, "r") as snaffout:
         data = json.load(snaffout)
     return data
 
-def post_data_to_elastic(data, index:str, apikey:str, host:str, insecure:bool):
+def post_data_to_elastic(data, index:str, es):
     triage_levels = ["Green", "Yellow", "Red", "Black"]
     snaffle = {}
     snaffle["entries"] = []
     ii = 0
-
+    #TODO: optimise this process by bulk uploading documents if possible.
     for entry in data["entries"]:
         if(len(entry["eventProperties"].keys()) != 0):
             for triage_level in triage_levels:
                 if(list(entry["eventProperties"].keys())[0] == triage_level):
                     if(entry["eventProperties"][triage_level]["Type"] == "FileResult"):
                         # send the data
-                        r = requests.put(f"https://{host}/{index}/_doc/{ii}", json=entry["eventProperties"][triage_level], headers={"Authorization": f"ApiKey {apikey}"}, verify=insecure)
-                        if(r.status_code != 201):
-                            print(r.status_code, r.reason)
-                        # increment the counter 
+                        resp = es.index(index=index, id=ii, document=entry["eventProperties"][triage_level])
+                        # TODO: Add check for if response is an error before printing
+                        print(resp)
                         ii = ii + 1
+
+def setup_elastic_client(hostname:str, api_key:str, verify:str):
+    es = Elasticsearch(
+        f"https://{hostname}:9200/",
+        api_key=api_key,
+        verify_certs=verify)
+    return es
 
 def main():
     parser = argparse.ArgumentParser(description="Send Snaffler Output to ElasticSearch for analysis.", epilog="Happy Snaffling")
@@ -46,14 +48,20 @@ def main():
     data = load_data(args.file)
 
     if args.index is not None and args.apikey is not None:
-        post_data_to_elastic(data, args.index, args.apikey, args.url, insecure)
+        es = setup_elastic_client(args.hostname, args.apikey, insecure)
+        post_data_to_elastic(data, args.index, es)
     else:
         if args.index is None:
             # TODO add functionality here using the ES library to check for existing indicies
             index = input("Please enter a name for the index to use: ")
+        else:
+            index = args.index
         if args.apikey is None:
             apikey = input("Please enter an API Key: ")
-        post_data_to_elastic(data, index, apikey, args.url, insecure)
+        else:
+            apikey = args.apikey
+        es = setup_elastic_client(args.hostname, apikey, insecure)
+        post_data_to_elastic(data, index, es)
 
 if __name__ == "__main__":
     main()
