@@ -12,7 +12,7 @@ def load_data(filename:str):
         data = json.load(snaffout)
     return data
 
-def post_data_to_elastic(data, index:str, apikey:str, host:str):
+def post_data_to_elastic(data, index:str, apikey:str, host:str, insecure:bool):
     triage_levels = ["Green", "Yellow", "Red", "Black"]
     snaffle = {}
     snaffle["entries"] = []
@@ -24,7 +24,7 @@ def post_data_to_elastic(data, index:str, apikey:str, host:str):
                 if(list(entry["eventProperties"].keys())[0] == triage_level):
                     if(entry["eventProperties"][triage_level]["Type"] == "FileResult"):
                         # send the data
-                        r = requests.put(f"https://{host}/{index}/_doc/{ii}", json=entry["eventProperties"][triage_level], headers={"Authorization": f"ApiKey {apikey}"}, verify=False)
+                        r = requests.put(f"https://{host}/{index}/_doc/{ii}", json=entry["eventProperties"][triage_level], headers={"Authorization": f"ApiKey {apikey}"}, verify=insecure)
                         if(r.status_code != 201):
                             print(r.status_code, r.reason)
                         # increment the counter 
@@ -38,20 +38,22 @@ def main():
     parser.add_argument("-k", "--apikey", type=str, help="The API key used to authentiate to ElasticSearch.")
     parser.add_argument("-r", "--replace", type=str, help="Optional argument to delete existing items in the index selected before adding new items.")
     parser.add_argument("-a", "--append", type=str, help="Optional argument to append new items to the selected index.")
-    parser.add_argument("--insecure", type=Boolean, help="Toggle for allowing sending over HTTPS with verification turned off so self signed or invalid ceritficates can be used.")
+    parser.add_argument("--insecure", type=bool, help="Toggle for allowing sending over HTTPS with verification turned off so self signed or invalid ceritficates can be used.", default=False)
     args = parser.parse_args()
+    # This might look a bit weird but I have done it so it makes more logical sense when it is passed to the requests function.
+    insecure = not args.insecure
 
     data = load_data(args.file)
 
     if args.index is not None and args.apikey is not None:
-        post_data_to_elastic(data, args.index, args.apikey, args.url)
+        post_data_to_elastic(data, args.index, args.apikey, args.url, insecure)
     else:
         if args.index is None:
             # TODO add functionality here using the ES library to check for existing indicies
             index = input("Please enter a name for the index to use: ")
         if args.apikey is None:
             apikey = input("Please enter an API Key: ")
-        post_data_to_elastic(data, index, apikey, args.url)
+        post_data_to_elastic(data, index, apikey, args.url, insecure)
 
 if __name__ == "__main__":
     main()
