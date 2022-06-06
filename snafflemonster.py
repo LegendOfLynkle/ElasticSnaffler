@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import argparse
+from elasticsearch.helpers import streaming_bulk
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Index
 
@@ -46,10 +47,11 @@ def get_choice(es, index):
     count = es.cat.count(index, params={"format": "json"})[0]["count"]
     print(f"The {index} index is already in use and has {count} items stored. How would you like to proceed?")
     while not valid:
-        choice = input(f"Please select one of the following options:\nA: Append data to the index\nR: Replace the data in the index. (Will delete old data first)\nI: Select a different index\nQ: Quit without doing anything.")
+        choice = input(f"Please select one of the following options:\nA: Append data to the index\nR: Replace the data in the index. (Will delete old data first)\nI: Select a different index\nQ: Quit without doing anything.\n")
         if choice.lower() not in valid_choice:
             print(f"The option {choice} is not valid.")
         else:
+            choice = choice.lower()
             if choice == "a":
                 valid = True
             if choice == "r":
@@ -97,10 +99,7 @@ def view(data, args):
         # ask them how to handle it if it is in use
         choice, index = get_choice(es, index)
         if choice == "r":
-            # TODO: Add call here to delete items in the index/delete the index
-            # This call here should work but I won't remove the the TODO until I have tested it.
-            old_index = Index(index)
-            old_index.delete(ignore=[400, 404])
+            es.indices.delete(index=index, ignore=[400, 404])
             post_data_to_elastic(data, index, es)
         if choice == "a":
             # TODO: add functionality to append here.
@@ -112,7 +111,27 @@ def view(data, args):
             print("You have chose to quit, aborting")
     else:
         # The index is not in use and we can just post no worries.
-        post_data_to_elastic(data, index, es)
+        # post_data_to_elastic(data, index, es)
+        post_data_to_elastic_bulk(es, data, index)
+
+def post_data_to_elastic_bulk(es, data, index):
+    ii = 0
+    for ok, action in streaming_bulk(
+        client=es, index=index, actions=gen_bulk_data(data)
+    ):
+        print(f"Uploaded {ii} documents")
+        ii += ok
+
+def gen_bulk_data(data):
+    triage_levels = ["Green", "Yellow", "Red", "Black"]
+    snaffle = {}
+    snaffle["entries"] = []
+    for entry in data["entries"]:
+        if(len(entry["eventProperties"].keys()) != 0):
+            for triage_level in triage_levels:
+                if(list(entry["eventProperties"].keys())[0] == triage_level):
+                    if(entry["eventProperties"][triage_level]["Type"] == "FileResult"):
+                        yield entry["eventProperties"][triage_level]
 
 def main():
     parser = argparse.ArgumentParser(description="Send Snaffler Output to ElasticSearch for analysis.", epilog="Happy Snaffling")
