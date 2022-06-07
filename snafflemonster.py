@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import argparse
+import tqdm
 from elasticsearch.helpers import streaming_bulk
 from elasticsearch import Elasticsearch
 
@@ -92,12 +93,17 @@ def view(data, args):
         post_data_to_elastic_bulk(es, data, index)
 
 def post_data_to_elastic_bulk(es, data, index):
+    total = get_file_result_total(data)
+    print("Uploading..")
+    progress = tqdm.tqdm(unit="results", total=total)
     ii = 0
     for ok, action in streaming_bulk(
         client=es, index=index, actions=gen_bulk_data(data)
     ):
-        print(f"Uploaded {ii} documents")
+        #print(f"Uploaded {ii} documents")
+        progress.update(1)
         ii += ok
+    print(f"Uploaded {ii} results out of {total} succesfully.")
 
 def gen_bulk_data(data):
     triage_levels = ["Green", "Yellow", "Red", "Black"]
@@ -109,6 +115,17 @@ def gen_bulk_data(data):
                 if(list(entry["eventProperties"].keys())[0] == triage_level):
                     if(entry["eventProperties"][triage_level]["Type"] == "FileResult"):
                         yield entry["eventProperties"][triage_level]
+
+def get_file_result_total(data):
+    total = 0
+    triage_levels = ["Green", "Yellow", "Red", "Black"]
+    for entry in data["entries"]:
+        if(len(entry["eventProperties"].keys()) != 0):
+            for triage_level in triage_levels:
+                if(list(entry["eventProperties"].keys())[0] == triage_level):
+                    if(entry["eventProperties"][triage_level]["Type"] == "FileResult"):
+                        total += 1
+    return total
 
 def main():
     parser = argparse.ArgumentParser(description="Send Snaffler Output to ElasticSearch for analysis.", epilog="Happy Snaffling")
