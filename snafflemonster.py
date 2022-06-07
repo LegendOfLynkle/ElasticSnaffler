@@ -3,29 +3,11 @@ import json
 import argparse
 from elasticsearch.helpers import streaming_bulk
 from elasticsearch import Elasticsearch
-from elasticsearch_dsl import Index
 
 def load_data(filename:str):
     with open(filename, "r") as snaffout:
         data = json.load(snaffout)
     return data
-
-def post_data_to_elastic(data, index:str, es):
-    triage_levels = ["Green", "Yellow", "Red", "Black"]
-    snaffle = {}
-    snaffle["entries"] = []
-    ii = 0
-    #TODO: optimise this process by bulk uploading documents if possible.
-    for entry in data["entries"]:
-        if(len(entry["eventProperties"].keys()) != 0):
-            for triage_level in triage_levels:
-                if(list(entry["eventProperties"].keys())[0] == triage_level):
-                    if(entry["eventProperties"][triage_level]["Type"] == "FileResult"):
-                        # send the data
-                        resp = es.index(index=index, id=ii, document=entry["eventProperties"][triage_level])
-                        # TODO: Add check for if response is an error before printing
-                        print(resp)
-                        ii = ii + 1
 
 def setup_elastic_client(hostname:str, api_key:str, verify:str):
     es = Elasticsearch(
@@ -92,7 +74,6 @@ def view(data, args):
     if args.index is not None:
         index = args.index
     else:
-        # TODO add functionality here using the ES library to check for existing indicies
         index = input("Please enter a name for the index to use: ")
     # check if the index is in use
     if is_index_in_use(es, index):
@@ -100,18 +81,14 @@ def view(data, args):
         choice, index = get_choice(es, index)
         if choice == "r":
             es.indices.delete(index=index, ignore=[400, 404])
-            post_data_to_elastic(data, index, es)
-        if choice == "a":
-            # TODO: add functionality to append here.
-            pass
-        if choice == "i":
-            # The new index is not in use and we can just post the data like normal.
-            post_data_to_elastic(data, index, es)
+            post_data_to_elastic_bulk(es, data, index)
+        if choice == "a" or choice == "i":
+            # testing out here if collapsing these cases works for both scenarios
+            post_data_to_elastic_bulk(es, data, index)
         if choice == "q":
             print("You have chose to quit, aborting")
     else:
         # The index is not in use and we can just post no worries.
-        # post_data_to_elastic(data, index, es)
         post_data_to_elastic_bulk(es, data, index)
 
 def post_data_to_elastic_bulk(es, data, index):
