@@ -100,7 +100,6 @@ def post_data_to_elastic_bulk(es, data, index):
     for ok, action in streaming_bulk(
         client=es, index=index, actions=gen_bulk_data(data)
     ):
-        #print(f"Uploaded {ii} documents")
         progress.update(1)
         ii += ok
     print(f"Uploaded {ii} results out of {total} succesfully.")

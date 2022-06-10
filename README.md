@@ -1,6 +1,6 @@
 # ElasticSnaffler
 
-Taking Snaffler analysis to the *next* level using ElasticSearch. Currently in Alpha (&alpha;)
+Taking [Snaffler](https://github.com/SnaffCon/Snaffler) analysis to the *next* level using ElasticSearch. Currently in Alpha (&alpha;)
 
 ***
 
@@ -41,6 +41,13 @@ python3 snafflemonster.py -f /Path/To/Snaffler.json -n elasticsearch.snaffler.co
 ```
 
 If necessary arguments such as Index and Apikey are not provided then the user will be prompted for these values at runtime.
+
+If you don't already have any snaffler output to analyse/send to elasticsearch then you can get/create some by grabbing a copy of Snaffler from [here](https://github.com/SnaffCon/Snaffler/releases).
+
+You can then get/create some output to analyse by running Snaffler like so:
+```bash
+snaffler.exe -s -o snaffout.json -t json
+```
 
 ## ElasticSearch Setup
 If you don't already have an elasticsearch instance setup then you will want to do that first. I recommend using Docker and Docker Compose because it is nice and easy.
@@ -100,9 +107,6 @@ docker-compose up
 ```
 To get your ElasticSearch instance up and runnning.
 
-## Dashboards
-Kibana will let you visualise the data that you upload using the ingestor. You can create your own dashboards to suit your needs. Currently next on the list of things to implement is creating a demo dashboard automatically along with a requirred data view so wath this space.
-
 ## Creating an API Key
 In order to perform operations against the ElasticSearch cluster you just setup you will need an API key. You can create one quite easily by going:
 1. Stack Management
@@ -117,11 +121,60 @@ This process is also illustrated here:
 ![create-api-key-3](./img/create-api-key-3.png)
 ![create-api-key-4](./img/create-api-key-4.png)
 
+## Dashboards
+Kibana will let you visualise the data that you upload using the ingestor. You can create your own dashboards to suit your needs. Currently next on the list of things to implement is creating a demo dashboard automatically along with a requirred data view so wath this space. Whilst I do that though here are some instructions on how to create your own dashboard and start visualising things:
+
+Before you can get started with a dashboard you will need to do two important things.
+1. Upload your data to ElasticSearch Index using the ingestor.
+2. Create a Data View/Index Pattern for your uploaded data.
+
+Without a Data View/Index Pattern ElasticSearch won't be able to display any data in a Dashboard.
+
+You can create a Data View/Index Pattern by going:
+1. Stack Management
+2. Data Views
+3. Create Data View
+
+This process is also illustrated here:
+![create-data-view-1](./img/create-data-view-1.png)
+![create-data-view-2](./img/create-data-view-2.png)
+![create-data-view-3](./img/create-data-view-3.png)
+
+You can create a Dashboard by going:
+1. Dashboard
+2. Create Dashboard
+3. Create Visualisation
+4. Pick your data view that you created
+5. Choose a field that you want to visualise eg: FileResult.MatchedRule.Triage.keyword (If you get there are no available fields then try extending the time range)
+6. Drag the desired field(s) from the available fields section into the middle
+7. Change your visualisation type to suit your needs
+8. Hit save and return to complete the visualisation
+9. Repeat as many times as needed for all the visualisations you want in your dashboard
+
+This process is also illustrated here:
+![create-dashboard-1](./img/create-dashboard-1.png)
+![create-dashboard-2](./img/create-dashboard-2.png)
+![create-dashboard-3](./img/create-dashboard-3.png)
+![create-dashboard-4](./img/create-dashboard-4.png)
+
+Once you have populated your dashboard with different visualisations you can apply filters by clicking on different fields such as the regions of the pie chart or by clicking add filter and then selecting some options.
+
+Doing this you can end up with something like the following:
+![example-dashboard](./img/example-dashboard-and-filter.png)
+
+If you have suggestions for better information to display in the dashboard then please share it!
+ 
+## Feature TODO List
+ - [ ] Automatic Dashboard and DataView Generation (in progress)
+ - [ ] Built in queries (eg: find all scripts that are writable)
+ - [ ] Better visualisation of an individual result
+ - [ ] Web/Desktop UI To allow for a cleaner/simpler user experience
+
 ## Support
-Please contact Lynkle if you have issues.
+Please create an issue if you find a problem. Pull requests are welcome.
 
 ## Authors and acknowledgment
 Lynkle
 
 ## License
-This project is license under the MIT license.
+This project is license under the GPLv3 license.
