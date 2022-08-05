@@ -22,7 +22,7 @@ def setup_elastic_client(hostname:str, api_key:str, verify:str):
 
 def is_index_in_use(es, index_name):
     in_use = False
-    if index_name in es.indices.get_alias("*"):
+    if index_name in es.indices.get_alias(index="*"):
         in_use = True
     return in_use
 
@@ -155,7 +155,7 @@ def auto_create_data_view(kibana, index, es):
                 no_matches = True
                 while not valid:
                     pattern = input("Please enter the pattern you want for your data-view:\n")
-                    indices = es.indices.get_alias("*")
+                    indices = es.indices.get_alias(index="*")
                     # we loop here incase the pattern they provided here uses commas to specify multiple things.
                     for sub_pattern in pattern.split(","):
                         # check each of the indices.
@@ -185,12 +185,13 @@ def auto_create_dashboard(kibana, index):
     default_dashboard["description"] = default_dashboard["description"].replace("INDEX_NAME", index)
     # Change the visualisation references to refer to the desired data view
     default_dashboard["panelsJSON"] = default_dashboard["panelsJSON"].replace("DATA-VIEW-ID", data_view_id)
+    print("Creating dashboard")
     kibana.create_dashboard(default_dashboard)
 
 def get_choice_basic(prompt, valid_choice):
     valid = False
     while not valid:
-        choice = input(f"Please choose an option:\n{prompt}")
+        choice = input(f"Please choose an option:\n{prompt}\n")
         if choice.lower() not in valid_choice:
             print(f"The option {choice} is not valid.")
         else:

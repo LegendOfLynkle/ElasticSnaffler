@@ -1,5 +1,8 @@
 import json
 import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 # Default Dashboar Constant
 DEFAULT_DASHBOARD = {'title': 'Snaffler INDEX_NAME Dashboard', 
@@ -32,8 +35,6 @@ class Kibana:
         self._session.verify = not insecure
         #print(self._session.verify)
         self._session.headers.update({"Authorization": f"ApiKey {apikey}", "kbn-xsrf": "true"})
-        #TODO Remove the proxy line from here once I am done with deving this section.
-        self._session.proxies = {"http": "http://localhost:8080"}
         # HTTP option is provided since I only test locally and the default with the docker
         # compose is to use HTTP for kibana.
         self._http = http
